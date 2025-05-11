@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>گیمیفیکیشن ترومای سر - قانون PECARN</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div id="root" class="container mx-auto p-4"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Game = () => {
+      const [stage, setStage] = useState(0);
+      const [score, setScore] = useState(0);
+      const [timeLeft, setTimeLeft] = useState(120);
+      const [answers, setAnswers] = useState({});
+      const [gameOver, setGameOver] = useState(false);
+
+      useEffect(() => {
+        if (timeLeft > 0 && !gameOver) {
+          const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+          return () => clearTimeout(timer);
+        } else if (timeLeft === 0) {
+          setGameOver(true);
+        }
+      }, [timeLeft, gameOver]);
+
+      const questions = [
+        {
+          text: "آیا GCS بیمار کمتر از ۱۵ است؟",
+          options: ["بله", "خیر"],
+          correct: "بله",
+        },
+        {
+          text: "آیا هماتوم غیرپیشانی وجود دارد؟",
+          options: ["بله", "خیر"],
+          correct: "بله",
+        },
+        {
+          text: "آیا رفتار بیمار غیرطبیعی است؟",
+          options: ["بله", "خیر"],
+          correct: "بله",
+        },
+        {
+          text: "بر اساس PECARN، آیا سی‌تی اسکن لازم است؟",
+          options: ["بله", "خیر"],
+          correct: "بله",
+        },
+      ];
+
+      const handleAnswer = (questionIndex, answer) => {
+        setAnswers({ ...answers, [questionIndex]: answer });
+        if (answer === questions[questionIndex].correct) {
+          setScore(score + 25);
+        }
+        if (questionIndex < questions.length - 1) {
+          setStage(stage + 1);
+        } else {
+          setGameOver(true);
+          const highScores = JSON.parse(localStorage.getItem("highScores") || "[]");
+          highScores.push(score + (answer === questions[questionIndex].correct ? 25 : 0));
+          localStorage.setItem("highScores", JSON.stringify(highScores));
+        }
+      };
+
+      const restartGame = () => {
+        setStage(0);
+        setScore(0);
+        setTimeLeft(120);
+        setAnswers({});
+        setGameOver(false);
+      };
+
+      const renderGameOver = () => {
+        const highScores = JSON.parse(localStorage.getItem("highScores") || "[]").sort((a, b) => b - a).slice(0, 5);
+        return (
+          <div>
+            <h2 className="text-xl font-bold text-red-600">بازی تمام شد!</h2>
+            <p className="my-4">امتیاز شما: {score}</p>
+            <p className="mb-4">بازخورد: {score >= 75 ? "عالی! تصمیم‌گیری شما درست بود." : "نیاز به تمرین بیشتر دارید!"}</p>
+            <h3 className="font-semibold">توضیح:</h3>
+            <p className="mb-4">
+              بیمار معیارهای PECARN (GCS <15، هماتوم غیرپیشانی، رفتار غیرطبیعی) را داشت. سی‌تی اسکن لازم بود.
+            </p>
+            <h3 className="font-semibold">تابلوی امتیازات:</h3>
+            <ul className="list-disc pr-6 mb-4">
+              {highScores.map((s, i) => (
+                <li key={i}>رتبه {i + 1}: {s}</li>
+              ))}
+            </ul>
+            <button onClick={restartGame} className="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+              شروع مجدد
+            </button>
+          </div>
+        );
+      };
+
+      return (
+        <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-lg text-right">
+          <h1 className="text-2xl font-bold text-blue-600 mb-4">گیمیفیکیشن ترومای سر</h1>
+          {stage === 0 ? (
+            <div>
+              <p className="mb-4">
+                شما پزشک اورژانس هستید. یک کودک ۱۸ ماهه با ترومای سر وارد شده است. باید با استفاده از قانون PECARN تصمیم بگیرید که آیا سی‌تی اسکن لازم است. زمان محدود است!
+              </p>
+              <p className="mb-4">
+                <strong>سناریو:</strong> کودک ۱۸ ماهه، افتادن از دوچرخه، LOC حدود ۳ ثانیه، بی‌قرار، هماتوم پس‌سری، رفتار غیرطبیعی، GCS ۱۴.
+              </p>
+              <button
+                onClick={() => setStage(1)}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                شروع بازی
+              </button>
+            </div>
+          ) : !gameOver ? (
+            <div>
+              <div className="flex justify-between mb-4">
+                <span>امتیاز: {score}</span>
+                <span>زمان باقی‌مانده: {timeLeft} ثانیه</span>
+              </div>
+              <h2 className="text-lg font-semibold mb-2">{questions[stage - 1].text}</h2>
+              <div className="space-y-2">
+                {questions[stage - 1].options.map((option, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswer(stage - 1, option)}
+                    className="w-full bg-gray-200 p-2 rounded hover:bg-gray-300"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            renderGameOver()
+          )}
+        </div>
+      );
+    };
+
+    try {
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<Game />);
+    } catch (error) {
+      console.error("Error rendering React app:", error);
+    }
+  </script>
+</body>
+</html>
